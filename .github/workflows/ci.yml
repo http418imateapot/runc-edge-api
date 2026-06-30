@@ -19,6 +19,49 @@ jobs:
       - name: Check Python syntax (py_compile)
         run: python -m compileall -q .
 
+  pytest:
+    name: pytest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package with dev dependencies
+        run: pip install -e .[dev]
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  shellcheck:
+    name: Shell Script Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: "."
+
+  json-validate:
+    name: JSON Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          find . -name "*.json" -not -path "./.git/*" | while read -r f; do
+            echo "Validating $f"
+            python3 -m json.tool "$f" > /dev/null || exit 1
+          done
+
   sql-lint:
     name: SQL Syntax Check
     runs-on: ubuntu-latest
