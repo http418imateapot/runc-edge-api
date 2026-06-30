@@ -27,7 +27,7 @@
 | **健康檢查** | 無 `/health` 端點 | 新增 `GET /health`，供 systemd / 監控系統整合 |
 | **容器隔離** | 僅 PID + Mount namespace，UID 映射為 root-to-root | 新增 User namespace，host UID offset = 100000 |
 | **依賴版本** | fastapi 0.95 / uvicorn 0.21（2023 年，有 CVE） | fastapi 0.115 / uvicorn 0.32（最新穩定） |
-| **部署** | 僅手動 `uvicorn api:app` | 提供 systemd unit file，開機自動啟動 |
+| **部署** | 僅手動 `uvicorn api:app` | 提供可安裝套件與 systemd unit file，支援 `runc-edge-api` 啟動 |
 
 ---
 
@@ -40,10 +40,10 @@
 │                     Edge Device (Host OS)              │
 │                                                       │
 │  ┌─────────────────────────────────────────────────┐  │
-│  │           restful-runc.service (systemd)        │  │
+│  │         runc-edge-api.service (systemd)         │  │
 │  │                                                 │  │
 │  │   ┌─────────────────────────────────────────┐  │  │
-│  │   │  FastAPI (uvicorn) — api.py             │  │  │
+│  │   │  FastAPI (uvicorn) — runc_edge_api.api  │  │  │
 │  │   │                                         │  │  │
 │  │   │  POST /api/containers/start             │  │  │
 │  │   │  POST /api/containers/stop              │  │  │
@@ -76,12 +76,12 @@
 
 | 元件 | 說明 |
 |------|------|
-| `api.py` | FastAPI 應用程式，提供 REST 端點，通過 API Key 認證後委派給 runc |
+| `runc_edge_api/api.py` | FastAPI 應用程式，提供 REST 端點，通過 API Key 認證後委派給 runc |
 | `runc` | Linux 原生 OCI Container Runtime，管理容器生命週期與 cgroup 資源限制 |
 | `config.json` | OCI Runtime Spec，定義容器的 rootfs、namespace、cgroup、environment |
 | `container_rootfs/` | 容器的 Root Filesystem（由 Buildroot/Yocto 生成） |
 | `app/` | OT 應用程式目錄，掛載或打包進 rootfs |
-| `systemd/restful-runc.service` | 系統服務定義，確保開機自啟、自動重啟 |
+| `systemd/runc-edge-api.service` | 系統服務定義，確保開機自啟、自動重啟 |
 
 ---
 
@@ -290,8 +290,18 @@ runc-edge-api/
 │   └── runc-edge-api.service  # systemd 服務設定
 ├── tests/
 │   ├── __init__.py
-│   └── test_api.py            # 單元測試
-├── api.py                     # 容器管理 REST API
+│   ├── test_api.py            # API 行為測試
+│   └── test_package.py        # 套件版本與中繼資料測試
+├── runc_edge_api/
+│   ├── __init__.py            # 版本資訊
+│   ├── __main__.py            # console entry point
+│   └── api.py                 # 容器管理 REST API
+├── api.py                     # 舊版匯入相容 shim
+├── pyproject.toml             # Python 套件定義
+├── VERSION                    # 單一來源版本號
+├── CHANGELOG.md               # 版本紀錄
+├── SECURITY.md                # 安全政策
+├── CONTRIBUTING.md            # 貢獻指南
 ├── config.json                # runc OCI 容器設定
 ├── requirements.txt           # 執行期相依套件
 ├── requirements-dev.txt       # 開發/測試相依套件
