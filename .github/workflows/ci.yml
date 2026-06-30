@@ -59,7 +59,7 @@ jobs:
         run: |
           find . -name "*.json" -not -path "./.git/*" | while read -r f; do
             echo "Validating $f"
-            python3 -c "import json, sys; json.load(open('$f'))" || exit 1
+            python3 -m json.tool "$f" > /dev/null || exit 1
           done
 
   sql-lint:
