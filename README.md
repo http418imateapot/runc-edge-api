@@ -10,14 +10,14 @@
 ## 專案架構
 
 ```
-restful-runc-container/
+runc-edge-api/
 ├── .github/
 │   └── SDD.md              # 軟體設計文件
 ├── app/
 │   └── sample.sh           # OT2IT 範例心跳程式
 ├── container_rootfs/       # Guest OS RootFS (用 Buildroot/Yocto 生成)
 ├── systemd/
-│   └── restful-runc.service # systemd 服務設定
+│   └── runc-edge-api.service # systemd 服務設定
 ├── tests/
 │   ├── __init__.py
 │   └── test_api.py         # 單元測試
@@ -42,8 +42,8 @@ restful-runc-container/
 ### 1. 下載專案
 
 ```bash
-git clone https://github.com/http418imateapot/restful-runc-container.git
-cd restful-runc-container
+git clone https://github.com/http418imateapot/runc-edge-api.git
+cd runc-edge-api
 ```
 
 ### 2. 安裝原生容器工具
@@ -182,18 +182,18 @@ curl http://127.0.0.1:8000/health
 
 ```bash
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin ot-api
-sudo mkdir -p /etc/restful-runc
-sudo bash -c "echo 'API_KEY=$(openssl rand -hex 32)' > /etc/restful-runc/env"
-sudo chmod 600 /etc/restful-runc/env
-sudo chown ot-api:ot-api /etc/restful-runc/env
+sudo mkdir -p /etc/runc-edge-api
+sudo bash -c "echo 'API_KEY=$(openssl rand -hex 32)' > /etc/runc-edge-api/env"
+sudo chmod 600 /etc/runc-edge-api/env
+sudo chown ot-api:ot-api /etc/runc-edge-api/env
 ```
 
 ### 部署專案
 
 ```bash
-sudo cp -r . /opt/restful-runc-container
-sudo chown -R ot-api:ot-api /opt/restful-runc-container
-cd /opt/restful-runc-container
+sudo cp -r . /opt/runc-edge-api
+sudo chown -R ot-api:ot-api /opt/runc-edge-api
+cd /opt/runc-edge-api
 sudo -u ot-api python3 -m venv venv
 sudo -u ot-api venv/bin/pip install -r requirements.txt
 ```
@@ -201,11 +201,11 @@ sudo -u ot-api venv/bin/pip install -r requirements.txt
 ### 啟用服務
 
 ```bash
-sudo cp systemd/restful-runc.service /etc/systemd/system/
+sudo cp systemd/runc-edge-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable restful-runc
-sudo systemctl start restful-runc
-sudo systemctl status restful-runc
+sudo systemctl enable runc-edge-api
+sudo systemctl start runc-edge-api
+sudo systemctl status runc-edge-api
 ```
 
 ---
