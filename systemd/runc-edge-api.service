@@ -19,7 +19,7 @@ Environment=RUNC_TIMEOUT=30
 Environment=STOP_GRACE_PERIOD=10
 
 WorkingDirectory=/opt/runc-edge-api
-ExecStart=/opt/runc-edge-api/venv/bin/uvicorn api:app --host 127.0.0.1 --port 8000
+ExecStart=/opt/runc-edge-api/venv/bin/runc-edge-api --host 127.0.0.1 --port 8000
 
 # Restart policy suitable for OT environments (high availability)
 Restart=on-failure

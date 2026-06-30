@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "runc-edge-api"
+dynamic = ["version"]
+description = "FastAPI service for managing Linux native runc containers on OT edge devices."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "http418imateapot" }]
+keywords = ["fastapi", "runc", "oci", "containers", "edge", "ot"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+  "Topic :: Software Development :: Embedded Systems",
+  "Topic :: System :: Operating System Kernels :: Linux",
+  "Topic :: System :: Systems Administration",
+]
+dependencies = [
+  "fastapi==0.115.0",
+  "uvicorn[standard]==0.32.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.3.0",
+  "httpx==0.27.0",
+]
+
+[project.scripts]
+runc-edge-api = "runc_edge_api.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/http418imateapot/runc-edge-api"
+Repository = "https://github.com/http418imateapot/runc-edge-api"
+Issues = "https://github.com/http418imateapot/runc-edge-api/issues"
+Changelog = "https://github.com/http418imateapot/runc-edge-api/blob/main/CHANGELOG.md"
+Security = "https://github.com/http418imateapot/runc-edge-api/blob/main/SECURITY.md"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.dynamic]
+version = { file = ["VERSION"] }
+
+[tool.setuptools.packages.find]
+include = ["runc_edge_api*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

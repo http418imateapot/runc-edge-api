@@ -15,13 +15,22 @@ runc-edge-api/
 │   └── SDD.md              # 軟體設計文件
 ├── app/
 │   └── sample.sh           # OT2IT 範例心跳程式
+├── runc_edge_api/
+│   ├── __init__.py         # 套件版本資訊
+│   ├── __main__.py         # CLI / console entry point
+│   └── api.py              # 容器管理 REST API
 ├── container_rootfs/       # Guest OS RootFS (用 Buildroot/Yocto 生成)
 ├── systemd/
 │   └── runc-edge-api.service # systemd 服務設定
 ├── tests/
 │   ├── __init__.py
 │   └── test_api.py         # 單元測試
-├── api.py                  # 容器管理 REST API
+├── api.py                  # 舊版匯入相容 shim
+├── pyproject.toml          # Python 套件與建置設定
+├── VERSION                 # 專案版本號
+├── CHANGELOG.md            # 版本變更紀錄
+├── SECURITY.md             # 漏洞通報政策
+├── CONTRIBUTING.md         # 貢獻指南
 ├── config.json             # runc OCI 容器設定
 ├── requirements.txt        # 執行期相依套件
 ├── requirements-dev.txt    # 開發/測試相依套件
@@ -82,7 +91,7 @@ docker export $(docker create alpine) | tar -C container_rootfs -xf -
 sudo apt-get install -y python3-full python3-pip
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install .
 ```
 
 ### 6. 生成 API Key 並設定環境變數
@@ -102,7 +111,7 @@ export BUNDLE_PATH=$(pwd)
 
 ```bash
 source venv/bin/activate
-uvicorn api:app --host 127.0.0.1 --port 8000
+runc-edge-api --host 127.0.0.1 --port 8000
 ```
 
 Swagger UI 文件：http://127.0.0.1:8000/docs
@@ -195,7 +204,7 @@ sudo cp -r . /opt/runc-edge-api
 sudo chown -R ot-api:ot-api /opt/runc-edge-api
 cd /opt/runc-edge-api
 sudo -u ot-api python3 -m venv venv
-sudo -u ot-api venv/bin/pip install -r requirements.txt
+sudo -u ot-api venv/bin/pip install .
 ```
 
 ### 啟用服務
@@ -213,9 +222,20 @@ sudo systemctl status runc-edge-api
 ## 執行測試
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -e .[dev]
 pytest tests/ -v
 ```
+
+---
+
+## 套件與版本資訊
+
+- 套件安裝名稱：`runc-edge-api`
+- 啟動指令：`runc-edge-api --host 127.0.0.1 --port 8000`
+- 版本單一來源：[`VERSION`](VERSION)
+- 變更紀錄：[`CHANGELOG.md`](CHANGELOG.md)
+- 安全政策：[`SECURITY.md`](SECURITY.md)
+- 貢獻指南：[`CONTRIBUTING.md`](CONTRIBUTING.md)
 
 ---
 

@@ -1,7 +1,7 @@
 """Tests for OT Container Management API (v2.0).
 
 Run with:
-    pip install -r requirements-dev.txt
+    pip install -e .[dev]
     pytest tests/ -v
 """
 
@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 os.environ["API_KEY"] = "test-secret-key"
 os.environ["BUNDLE_PATH"] = "/tmp/test-bundle"
 
-from api import app  # noqa: E402
+from runc_edge_api.api import app  # noqa: E402
 
 client = TestClient(app)
 HEADERS = {"X-API-Key": "test-secret-key"}
