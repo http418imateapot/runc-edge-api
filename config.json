@@ -1,7 +1,7 @@
 {
   "ociVersion": "1.0.2",
   "process": {
-    "terminal": true,
+    "terminal": false,
     "user": {
       "uid": 0,
       "gid": 0
@@ -11,13 +11,13 @@
     ],
     "env": [
       "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-      "APP_ENV=develop"
+      "APP_ENV=production"
     ],
     "cwd": "/"
   },
   "root": {
     "path": "container_rootfs",
-    "readonly": false
+    "readonly": true
   },
   "mounts": [
     {
@@ -26,31 +26,52 @@
       "source": "proc"
     },
     {
-      "destination": "/dev/pts",
+      "destination": "/dev",
       "type": "tmpfs",
       "source": "tmpfs",
-      "options": ["nosuid", "noexec", "nodev", "mode=620"]
+      "options": [
+        "nosuid",
+        "strictatime",
+        "mode=755",
+        "size=65536k"
+      ]
     },
     {
-      "destination": "/dev/ptmx",
-      "type": "bind",
-      "source": "/dev/pts/ptmx",
-      "options": ["rbind", "nosuid", "noexec", "nodev"]
+      "destination": "/sys",
+      "type": "sysfs",
+      "source": "sysfs",
+      "options": [
+        "nosuid",
+        "noexec",
+        "nodev",
+        "ro"
+      ]
+    },
+    {
+      "destination": "/tmp",
+      "type": "tmpfs",
+      "source": "tmpfs",
+      "options": [
+        "nosuid",
+        "nodev",
+        "mode=1777",
+        "size=64m"
+      ]
     }
   ],
   "linux": {
     "uidMappings": [
       {
-        "hostID": 0,
+        "hostID": 100000,
         "containerID": 0,
-        "size": 1
+        "size": 65536
       }
     ],
     "gidMappings": [
       {
-        "hostID": 0,
+        "hostID": 100000,
         "containerID": 0,
-        "size": 1
+        "size": 65536
       }
     ],
     "resources": {
@@ -62,9 +83,15 @@
       }
     },
     "namespaces": [
-      { "type": "pid" },
-      { "type": "mount" }
+      {
+        "type": "pid"
+      },
+      {
+        "type": "mount"
+      },
+      {
+        "type": "user"
+      }
     ]
   }
 }
-
