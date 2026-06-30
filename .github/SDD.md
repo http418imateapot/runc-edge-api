@@ -280,7 +280,7 @@ PATCH /api/containers/{id}/resources
 ### 8.1 目錄結構
 
 ```
-restful-runc-container/
+runc-edge-api/
 ├── .github/
 │   └── SDD.md                 # 本軟體設計文件
 ├── app/
@@ -304,7 +304,7 @@ restful-runc-container/
 
 關鍵設定：
 - `Restart=on-failure`：失敗時自動重啟（滿足 OT 高可用要求）
-- `EnvironmentFile=/etc/restful-runc/env`：敏感設定（`API_KEY`）從外部檔案載入
+- `EnvironmentFile=/etc/runc-edge-api/env`：敏感設定（`API_KEY`）從外部檔案載入
 - `AmbientCapabilities=CAP_SYS_ADMIN`：賦予 runc 所需最小能力
 - `NoNewPrivileges=true`：防止服務取得額外特權
 

@@ -1,4 +1,4 @@
-# 用 Linux 原生容器打造 OT 系統資源安全限制與 REST API 管理工具包
+# runc-edge-api：OT 邊緣設備的 Linux 原生容器 REST API 管理工具
 
 ## 簡介
 
@@ -10,7 +10,7 @@
 ## 專案架構
 
 ```
-restful-runc-container/
+runc-edge-api/
 ├── .github/
 │   └── SDD.md              # 軟體設計文件
 ├── app/
@@ -42,8 +42,8 @@ restful-runc-container/
 ### 1. 下載專案
 
 ```bash
-git clone https://github.com/http418imateapot/restful-runc-container.git
-cd restful-runc-container
+git clone https://github.com/http418imateapot/runc-edge-api.git
+cd runc-edge-api
 ```
 
 ### 2. 安裝原生容器工具
@@ -182,18 +182,18 @@ curl http://127.0.0.1:8000/health
 
 ```bash
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin ot-api
-sudo mkdir -p /etc/restful-runc
-sudo bash -c "echo 'API_KEY=$(openssl rand -hex 32)' > /etc/restful-runc/env"
-sudo chmod 600 /etc/restful-runc/env
-sudo chown ot-api:ot-api /etc/restful-runc/env
+sudo mkdir -p /etc/runc-edge-api
+sudo bash -c "echo 'API_KEY=$(openssl rand -hex 32)' > /etc/runc-edge-api/env"
+sudo chmod 600 /etc/runc-edge-api/env
+sudo chown ot-api:ot-api /etc/runc-edge-api/env
 ```
 
 ### 部署專案
 
 ```bash
-sudo cp -r . /opt/restful-runc-container
-sudo chown -R ot-api:ot-api /opt/restful-runc-container
-cd /opt/restful-runc-container
+sudo cp -r . /opt/runc-edge-api
+sudo chown -R ot-api:ot-api /opt/runc-edge-api
+cd /opt/runc-edge-api
 sudo -u ot-api python3 -m venv venv
 sudo -u ot-api venv/bin/pip install -r requirements.txt
 ```
