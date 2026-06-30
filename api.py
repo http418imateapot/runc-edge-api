@@ -1,123 +1,331 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import subprocess
+"""
+OT Container Management API (v2.0)
+
+RESTful API for managing Linux native containers (runc) on OT edge devices.
+All /api/* endpoints require an X-API-Key header.
+
+Environment variables:
+    API_KEY           (required) API authentication key
+    BUNDLE_PATH       (optional, default ".") runc bundle directory containing config.json
+    RUNC_TIMEOUT      (optional, default "30") seconds before a runc command times out
+    STOP_GRACE_PERIOD (optional, default "10") seconds to wait for SIGTERM before SIGKILL
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
 import logging
+import os
+import re
+import subprocess
+from typing import Optional
 
-# Configure basic logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+from fastapi import Depends, FastAPI, HTTPException, Security
+from fastapi.security.api_key import APIKeyHeader
+from pydantic import BaseModel
 
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Configuration from environment
+# ---------------------------------------------------------------------------
+API_KEY = os.environ.get("API_KEY", "")
+BUNDLE_PATH = os.environ.get("BUNDLE_PATH", ".")
+RUNC_TIMEOUT = int(os.environ.get("RUNC_TIMEOUT", "30"))
+STOP_GRACE_PERIOD = int(os.environ.get("STOP_GRACE_PERIOD", "10"))
+
+# ---------------------------------------------------------------------------
+# API Key authentication
+# ---------------------------------------------------------------------------
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+async def verify_api_key(key: Optional[str] = Security(_api_key_header)) -> str:
+    if not API_KEY:
+        logger.critical("API_KEY environment variable is not set -- all requests rejected.")
+        raise HTTPException(
+            status_code=503,
+            detail="Server misconfiguration: API_KEY is not configured",
+        )
+    if key != API_KEY:
+        raise HTTPException(status_code=403, detail="Invalid or missing API key")
+    return key
+
+
+# ---------------------------------------------------------------------------
+# Container ID validation (whitelist pattern -- prevents path traversal)
+# ---------------------------------------------------------------------------
+_CONTAINER_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}$")
+
+
+def _validate_container_id(container_id: str) -> str:
+    if not _CONTAINER_ID_RE.match(container_id):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid container ID. Must start with an alphanumeric character, "
+                "contain only [a-zA-Z0-9_.-], and be 1-64 characters long."
+            ),
+        )
+    return container_id
+
+
+# ---------------------------------------------------------------------------
+# runc helper -- runs in a thread pool so the event loop is not blocked
+# ---------------------------------------------------------------------------
+async def _run_runc(*args: str, timeout: int = RUNC_TIMEOUT) -> str:
+    """Execute a runc sub-command and return its stdout.
+
+    Raises:
+        HTTPException(504)              on subprocess timeout
+        subprocess.CalledProcessError   on non-zero exit code (caller decides HTTP status)
+    """
+
+    def _blocking_run() -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["runc", *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+
+    try:
+        result: subprocess.CompletedProcess = await asyncio.to_thread(_blocking_run)
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status_code=504,
+            detail=f"runc operation timed out after {timeout}s",
+        )
+
+    if result.returncode != 0:
+        raise subprocess.CalledProcessError(
+            result.returncode, "runc", output=result.stdout, stderr=result.stderr
+        )
+
+    return result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Application
+# ---------------------------------------------------------------------------
 app = FastAPI(
     title="OT Container Management API",
-    description="Use FastAPI to control the start, stop, and resource adjustments of Linux native containers.",
-    version="1.0.0"
+    description=(
+        "RESTful API for managing Linux native containers (runc) on OT edge devices. "
+        "All /api/* endpoints require the **X-API-Key** header."
+    ),
+    version="2.0.0",
 )
 
+
+# ---------------------------------------------------------------------------
+# Request/Response models
+# ---------------------------------------------------------------------------
 class ContainerAction(BaseModel):
     container_id: str
 
+
+class StopAction(BaseModel):
+    container_id: str
+    grace_period: int = STOP_GRACE_PERIOD
+
+
 class ResourceUpdate(BaseModel):
-    cpu_shares: int = None         # e.g., 512, 1024, etc.
-    memory_limit: int = None       # in bytes; e.g., 134217728 for 128MB
+    cpu_shares: Optional[int] = None    # relative CPU weight, e.g. 512 or 1024
+    memory_limit: Optional[int] = None  # bytes, e.g. 134217728 for 128 MiB
 
-@app.post("/api/containers/start", summary="Start Container")
-def start_container(action: ContainerAction):
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/health", summary="Health Check", tags=["Operations"])
+async def health() -> dict:
+    """Return service liveness status. No authentication required."""
+    return {"status": "ok"}
+
+
+@app.post("/api/containers/start", summary="Start Container", tags=["Containers"])
+async def start_container(
+    action: ContainerAction,
+    _: str = Depends(verify_api_key),
+) -> dict:
+    """Create and start the specified container.
+
+    Uses ``runc create`` followed by ``runc start`` so the API call returns
+    as soon as the container's init process is running (non-blocking).
     """
-    Start the specified container using runc.
-    """
-    logging.info(f"Attempting to start container: {action.container_id}")
+    container_id = _validate_container_id(action.container_id)
+    logger.info("Starting container: %s", container_id)
     try:
-        result = subprocess.run(
-            ["sudo", "runc", "run", action.container_id],
-            capture_output=True, text=True, check=True
-        )
-        logging.info(f"Container {action.container_id} started successfully.")
+        await _run_runc("create", "--bundle", BUNDLE_PATH, container_id)
+        await _run_runc("start", container_id)
     except subprocess.CalledProcessError as e:
-        logging.error(f"Failed to start container {action.container_id}: {e.stderr}")
-        raise HTTPException(status_code=500, detail=f"Failed to start container: {e.stderr}")
-    return {
-        "message": f"Container {action.container_id} started successfully",
-        "output": result.stdout
-    }
+        logger.error("Failed to start container %s: %s", container_id, e.stderr)
+        if e.stderr and "already exists" in e.stderr:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Container '{container_id}' already exists",
+            )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to start container: {e.stderr}",
+        )
+    logger.info("Container %s started", container_id)
+    return {"message": f"Container '{container_id}' started successfully"}
 
-@app.post("/api/containers/stop", summary="Stop Container")
-def stop_container(action: ContainerAction):
+
+@app.post("/api/containers/stop", summary="Stop Container", tags=["Containers"])
+async def stop_container(
+    action: StopAction,
+    _: str = Depends(verify_api_key),
+) -> dict:
+    """Gracefully stop and delete the specified container.
+
+    Sends SIGTERM and waits up to ``grace_period`` seconds for the process to
+    exit before sending SIGKILL. Deletes the container state afterwards.
     """
-    Stop the specified container using runc by sending SIGKILL.
-    """
-    logging.info(f"Attempting to stop container: {action.container_id}")
+    container_id = _validate_container_id(action.container_id)
+    logger.info("Stopping container %s (grace_period=%ds)", container_id, action.grace_period)
+
+    # Step 1: Request graceful shutdown
     try:
-        result = subprocess.run(
-            ["sudo", "runc", "kill", action.container_id, "SIGKILL"],
-            capture_output=True, text=True, check=True
-        )
-        logging.info(f"Container {action.container_id} stopped successfully.")
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Failed to stop container {action.container_id}: {e.stderr}")
-        raise HTTPException(status_code=500, detail=f"Failed to stop container: {e.stderr}")
-    return {
-        "message": f"Container {action.container_id} stopped successfully",
-        "output": result.stdout
-    }
+        await _run_runc("kill", container_id, "SIGTERM", timeout=5)
+    except (subprocess.CalledProcessError, HTTPException):
+        pass  # Already stopped or not running -- proceed to cleanup
 
-@app.patch("/api/containers/{container_id}/resources", summary="Update Resource Settings")
-def update_resources(container_id: str, update: ResourceUpdate):
+    # Step 2: Poll until stopped or grace period expires
+    for _ in range(action.grace_period):
+        await asyncio.sleep(1)
+        try:
+            state_raw = await _run_runc("state", container_id, timeout=5)
+            state = json.loads(state_raw)
+            if state.get("status") == "stopped":
+                break
+        except (subprocess.CalledProcessError, HTTPException, json.JSONDecodeError):
+            break  # Container gone or state unreachable -- proceed
+
+    # Step 3: Force kill if still running
+    try:
+        await _run_runc("kill", container_id, "SIGKILL", timeout=5)
+    except (subprocess.CalledProcessError, HTTPException):
+        pass
+
+    # Step 4: Remove container state
+    try:
+        await _run_runc("delete", container_id, timeout=10)
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to delete container %s: %s", container_id, e.stderr)
+        if e.stderr and "does not exist" in e.stderr:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Container '{container_id}' not found",
+            )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete container: {e.stderr}",
+        )
+
+    logger.info("Container %s stopped", container_id)
+    return {"message": f"Container '{container_id}' stopped successfully"}
+
+
+@app.patch(
+    "/api/containers/{container_id}/resources",
+    summary="Update Container Resources",
+    tags=["Containers"],
+)
+async def update_resources(
+    container_id: str,
+    update: ResourceUpdate,
+    _: str = Depends(verify_api_key),
+) -> dict:
+    """Update runtime resource limits using ``runc update``.
+
+    Changes take effect immediately without restarting the container.
     """
-    Simulate updating the resource settings (e.g., CPU shares and memory limits)
-    for the specified container.
-    In a production environment, this would be done by modifying the corresponding
-    configuration files in /sys/fs/cgroup.
-    """
-    logging.info(f"Updating resources for container: {container_id}")
-    update_info = {}
+    container_id = _validate_container_id(container_id)
+
+    runc_args: list[str] = []
+    updated: dict = {}
+
     if update.cpu_shares is not None:
-        update_info["cpu_shares"] = update.cpu_shares
-        logging.info(f"Setting CPU shares to: {update.cpu_shares}")
+        runc_args += ["--cpu-shares", str(update.cpu_shares)]
+        updated["cpu_shares"] = update.cpu_shares
+
     if update.memory_limit is not None:
-        update_info["memory_limit"] = update.memory_limit
-        logging.info(f"Setting memory limit to: {update.memory_limit} bytes")
-    logging.info(f"Resource settings updated for container {container_id}: {update_info}")
+        runc_args += ["--memory", str(update.memory_limit)]
+        updated["memory_limit"] = update.memory_limit
+
+    if not runc_args:
+        raise HTTPException(
+            status_code=400,
+            detail="No resource fields specified. Provide cpu_shares and/or memory_limit.",
+        )
+
+    logger.info("Updating resources for container %s: %s", container_id, updated)
+    try:
+        await _run_runc("update", container_id, *runc_args)
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to update resources for %s: %s", container_id, e.stderr)
+        if e.stderr and "does not exist" in e.stderr:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Container '{container_id}' not found",
+            )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update container resources: {e.stderr}",
+        )
+
+    logger.info("Resources updated for container %s", container_id)
     return {
-        "message": f"Container {container_id} resource settings updated successfully",
-        "updated": update_info
+        "message": f"Container '{container_id}' resource settings updated",
+        "updated": updated,
     }
 
-@app.get("/api/containers", summary="Get All Containers")
-def get_all_containers():
-    """
-    Retrieve a list of all containers using runc list.
-    """
-    logging.info("Fetching status for all containers.")
-    try:
-        result = subprocess.run(
-            ["sudo", "runc", "list", "--format", "json"],
-            capture_output=True, text=True, check=True
-        )
-        logging.info("All container statuses retrieved successfully.")
-    except subprocess.CalledProcessError as e:
-        logging.error(f"Failed to retrieve all container statuses: {e.stderr}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve container list: {e.stderr}")
-    return {
-        "message": "All containers retrieved successfully",
-        "containers": result.stdout
-    }
 
-@app.get("/api/containers/{container_id}", summary="Get Container By ID")
-def get_container_by_id(container_id: str):
-    """
-    Retrieve the state and details of the specified container using runc state.
-    """
-    logging.info(f"Fetching status for container: {container_id}")
+@app.get("/api/containers", summary="List All Containers", tags=["Containers"])
+async def get_all_containers(_: str = Depends(verify_api_key)) -> dict:
+    """Retrieve a JSON list of all containers known to runc."""
+    logger.info("Listing all containers")
     try:
-        result = subprocess.run(
-            ["sudo", "runc", "state", container_id],
-            capture_output=True, text=True, check=True
-        )
-        logging.info(f"Container {container_id} status retrieved successfully.")
+        output = await _run_runc("list", "--format", "json")
     except subprocess.CalledProcessError as e:
-        logging.error(f"Failed to retrieve status for container {container_id}: {e.stderr}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve container state: {e.stderr}")
-    return {
-        "message": f"Container {container_id} status retrieved successfully",
-        "state": result.stdout
-    }
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list containers: {e.stderr}",
+        )
+    containers = json.loads(output) if output.strip() else []
+    return {"containers": containers}
+
+
+@app.get("/api/containers/{container_id}", summary="Get Container State", tags=["Containers"])
+async def get_container_by_id(
+    container_id: str,
+    _: str = Depends(verify_api_key),
+) -> dict:
+    """Retrieve the current state of the specified container."""
+    container_id = _validate_container_id(container_id)
+    logger.info("Getting state for container: %s", container_id)
+    try:
+        output = await _run_runc("state", container_id)
+    except subprocess.CalledProcessError as e:
+        if e.stderr and "does not exist" in e.stderr:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Container '{container_id}' not found",
+            )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get container state: {e.stderr}",
+        )
+    return {"state": json.loads(output)}
 

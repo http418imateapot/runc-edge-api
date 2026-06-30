@@ -1,0 +1,37 @@
+[Unit]
+Description=OT Container Management REST API
+Documentation=https://github.com/http418imateapot/restful-runc-container
+After=network.target
+
+[Service]
+Type=simple
+User=ot-api
+Group=ot-api
+
+# Load API_KEY and other sensitive settings from an external file.
+# Create /etc/restful-runc/env before enabling this service:
+#   sudo mkdir -p /etc/restful-runc
+#   echo "API_KEY=$(openssl rand -hex 32)" | sudo tee /etc/restful-runc/env
+#   sudo chmod 600 /etc/restful-runc/env
+EnvironmentFile=/etc/restful-runc/env
+Environment=BUNDLE_PATH=/opt/restful-runc-container
+Environment=RUNC_TIMEOUT=30
+Environment=STOP_GRACE_PERIOD=10
+
+WorkingDirectory=/opt/restful-runc-container
+ExecStart=/opt/restful-runc-container/venv/bin/uvicorn api:app --host 127.0.0.1 --port 8000
+
+# Restart policy suitable for OT environments (high availability)
+Restart=on-failure
+RestartSec=5s
+
+# Harden the service: grant only the capabilities runc needs
+NoNewPrivileges=true
+AmbientCapabilities=CAP_SYS_ADMIN
+
+# Limit resources of the API service itself
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target
