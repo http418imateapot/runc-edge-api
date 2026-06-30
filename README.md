@@ -1,4 +1,4 @@
-# 用 Linux 原生容器打造 OT 系統資源安全限制與 REST API 管理工具包
+# runc-edge-api：OT 邊緣設備的 Linux 原生容器 REST API 管理工具
 
 ## 簡介
 
