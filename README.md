@@ -1,5 +1,8 @@
 # runc-edge-api：OT 邊緣設備的 Linux 原生容器 REST API 管理工具
 
+[![CI](https://github.com/http418imateapot/runc-edge-api/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/runc-edge-api/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/http418imateapot/runc-edge-api)](https://github.com/http418imateapot/runc-edge-api/releases/latest)
+
 ## 簡介
 
 使用 Linux 原生容器機制 (runc / cgroups)，示範 OT 程式系統資源安全性限制，並提供通過認證的輕量容器管理 REST API，為嵌入式 OT2IT 單板電腦產品提供低系統資源需求的輕量容器化方案。

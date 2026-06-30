@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  python-syntax:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check Python syntax (py_compile)
+        run: python -m compileall -q .
+
+  sql-lint:
+    name: SQL Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find SQL files
+        id: find-sql
+        run: |
+          SQL_COUNT=$(find . -name "*.sql" -not -path "./.git/*" | wc -l | tr -d ' ')
+          echo "count=$SQL_COUNT" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@v5
+        if: steps.find-sql.outputs.count != '0'
+        with:
+          python-version: "3.12"
+
+      - name: Install sqlfluff
+        if: steps.find-sql.outputs.count != '0'
+        run: pip install sqlfluff
+
+      - name: Lint SQL files
+        if: steps.find-sql.outputs.count != '0'
+        run: |
+          find . -name "*.sql" -not -path "./.git/*" | \
+            xargs sqlfluff lint --dialect ansi --templater raw
