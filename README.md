@@ -17,7 +17,7 @@ runc-edge-api/
 │   └── sample.sh           # OT2IT 範例心跳程式
 ├── container_rootfs/       # Guest OS RootFS (用 Buildroot/Yocto 生成)
 ├── systemd/
-│   └── restful-runc.service # systemd 服務設定
+│   └── runc-edge-api.service # systemd 服務設定
 ├── tests/
 │   ├── __init__.py
 │   └── test_api.py         # 單元測試
@@ -201,11 +201,11 @@ sudo -u ot-api venv/bin/pip install -r requirements.txt
 ### 啟用服務
 
 ```bash
-sudo cp systemd/restful-runc.service /etc/systemd/system/
+sudo cp systemd/runc-edge-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable restful-runc
-sudo systemctl start restful-runc
-sudo systemctl status restful-runc
+sudo systemctl enable runc-edge-api
+sudo systemctl start runc-edge-api
+sudo systemctl status runc-edge-api
 ```
 
 ---

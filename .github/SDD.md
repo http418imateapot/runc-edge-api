@@ -287,7 +287,7 @@ runc-edge-api/
 │   └── sample.sh              # OT 範例程式
 ├── container_rootfs/          # Guest OS RootFS（需另外準備）
 ├── systemd/
-│   └── restful-runc.service   # systemd 服務設定
+│   └── runc-edge-api.service  # systemd 服務設定
 ├── tests/
 │   ├── __init__.py
 │   └── test_api.py            # 單元測試
@@ -300,7 +300,7 @@ runc-edge-api/
 
 ### 8.2 systemd 服務
 
-服務設定檔：`systemd/restful-runc.service`
+服務設定檔：`systemd/runc-edge-api.service`
 
 關鍵設定：
 - `Restart=on-failure`：失敗時自動重啟（滿足 OT 高可用要求）
