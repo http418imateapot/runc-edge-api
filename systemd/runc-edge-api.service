@@ -1,6 +1,6 @@
 [Unit]
 Description=OT Container Management REST API
-Documentation=https://github.com/http418imateapot/restful-runc-container
+Documentation=https://github.com/http418imateapot/runc-edge-api
 After=network.target
 
 [Service]
@@ -9,17 +9,17 @@ User=ot-api
 Group=ot-api
 
 # Load API_KEY and other sensitive settings from an external file.
-# Create /etc/restful-runc/env before enabling this service:
-#   sudo mkdir -p /etc/restful-runc
-#   echo "API_KEY=$(openssl rand -hex 32)" | sudo tee /etc/restful-runc/env
-#   sudo chmod 600 /etc/restful-runc/env
-EnvironmentFile=/etc/restful-runc/env
-Environment=BUNDLE_PATH=/opt/restful-runc-container
+# Create /etc/runc-edge-api/env before enabling this service:
+#   sudo mkdir -p /etc/runc-edge-api
+#   echo "API_KEY=$(openssl rand -hex 32)" | sudo tee /etc/runc-edge-api/env
+#   sudo chmod 600 /etc/runc-edge-api/env
+EnvironmentFile=/etc/runc-edge-api/env
+Environment=BUNDLE_PATH=/opt/runc-edge-api
 Environment=RUNC_TIMEOUT=30
 Environment=STOP_GRACE_PERIOD=10
 
-WorkingDirectory=/opt/restful-runc-container
-ExecStart=/opt/restful-runc-container/venv/bin/uvicorn api:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/opt/runc-edge-api
+ExecStart=/opt/runc-edge-api/venv/bin/uvicorn api:app --host 127.0.0.1 --port 8000
 
 # Restart policy suitable for OT environments (high availability)
 Restart=on-failure
