@@ -364,6 +364,7 @@ class TestGetContainerById:
         assert response.status_code == 500
 
     def test_invalid_container_id_returns_400(self):
-        response = client.get("/api/containers/bad id!", headers=HEADERS)
-        # FastAPI URL router may return 404 for paths with spaces; both are acceptable
-        assert response.status_code in (400, 404, 422)
+        # Use a well-formed URL with an invalid ID embedded in a valid path segment.
+        # The validation in _validate_container_id must reject it with HTTP 400.
+        response = client.get("/api/containers/bad-id!", headers=HEADERS)
+        assert response.status_code == 400

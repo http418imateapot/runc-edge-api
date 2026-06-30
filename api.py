@@ -209,7 +209,7 @@ async def stop_container(
             state = json.loads(state_raw)
             if state.get("status") == "stopped":
                 break
-        except Exception:
+        except (subprocess.CalledProcessError, HTTPException, json.JSONDecodeError):
             break  # Container gone or state unreachable -- proceed
 
     # Step 3: Force kill if still running
