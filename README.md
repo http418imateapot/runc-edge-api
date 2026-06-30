@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/http418imateapot/runc-edge-api/actions/workflows/ci.yml/badge.svg)](https://github.com/http418imateapot/runc-edge-api/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/http418imateapot/runc-edge-api)](https://github.com/http418imateapot/runc-edge-api/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/http418imateapot/runc-edge-api)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
 
 ## 簡介
 
@@ -15,7 +17,10 @@
 ```
 runc-edge-api/
 ├── .github/
-│   └── SDD.md              # 軟體設計文件
+│   ├── SDD.md              # 軟體設計文件
+│   └── workflows/
+│       ├── ci.yml          # CI：語法檢查、測試、Shell/JSON 驗證
+│       └── release.yml     # Release：建立 GitHub Release 並上傳套件
 ├── app/
 │   └── sample.sh           # OT2IT 範例心跳程式
 ├── runc_edge_api/
